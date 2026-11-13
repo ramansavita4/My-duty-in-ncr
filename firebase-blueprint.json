@@ -1,0 +1,357 @@
+{
+  "entities": {
+    "AdminAccount": {
+      "title": "AdminAccount",
+      "description": "Server-verified administrator account record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of the admin" },
+        "email": { "type": "string", "description": "Verified admin email" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private employee registration, employment, salary structure, and PF/ESI details",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "role": { "type": "string", "enum": ["worker", "company_hr", "admin"] },
+        "employeeId": { "type": "string", "description": "Unique generated serial employee ID" },
+        "fullName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "dateOfBirth": { "type": "string" },
+        "gender": { "type": "string" },
+        "photoUri": { "type": "string" },
+        "residentialAddress": { "type": "string" },
+        "village": { "type": "string" },
+        "city": { "type": "string" },
+        "district": { "type": "string" },
+        "state": { "type": "string" },
+        "pinCode": { "type": "string" },
+        "companyName": { "type": "string" },
+        "factoryName": { "type": "string" },
+        "factoryAddress": { "type": "string" },
+        "industrialArea": { "type": "string" },
+        "department": { "type": "string" },
+        "designation": { "type": "string" },
+        "workCategory": { "type": "string" },
+        "dateOfJoining": { "type": "string" },
+        "gatePassNumber": { "type": "string" },
+        "workerId": { "type": "string" },
+        "previousExperience": { "type": "string" },
+        "hrContact": { "type": "string" },
+        "workplaceId": { "type": "string" },
+        "calculationMethod": {
+          "type": "string",
+          "enum": ["MONTHLY_FIXED", "DAILY_WAGE", "HOURLY_WAGE", "DAYS_26", "DAYS_30", "ACTUAL_PAYABLE"]
+        },
+        "monthlyGrossSalary": { "type": "number" },
+        "basicSalary": { "type": "number" },
+        "da": { "type": "number" },
+        "hra": { "type": "number" },
+        "otherAllowances": { "type": "number" },
+        "dailyWage": { "type": "number" },
+        "hourlyWage": { "type": "number" },
+        "overtimeRatePerHour": { "type": "number" },
+        "overtimeMultiplier": { "type": "number" },
+        "standardWorkingHours": { "type": "number" },
+        "shiftStartTime": { "type": "string" },
+        "lunchBreakMinutes": { "type": "integer" },
+        "teaBreakMinutes": { "type": "integer" },
+        "deductTeaBreak": { "type": "boolean" },
+        "weeklyOffDay": { "type": "string" },
+        "pfApplicable": { "type": "boolean" },
+        "esiApplicable": { "type": "boolean" },
+        "nightAllowancePerShift": { "type": "number" },
+        "attendanceBonusMonthly": { "type": "number" },
+        "uanNumber": { "type": "string" },
+        "esicNumber": { "type": "string" },
+        "pfAccountNumber": { "type": "string" },
+        "consentSelfieGiven": { "type": "boolean" },
+        "accountSuspended": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "employeeId", "fullName", "createdAt", "updatedAt"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily punch-in/punch-out attendance record with QR verification and selfie proof",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateKey": { "type": "string" },
+        "monthKey": { "type": "string" },
+        "status": { "type": "string", "enum": ["P", "A", "HD", "WO", "PL", "H", "M"] },
+        "workplaceId": { "type": "string" },
+        "workplaceName": { "type": "string" },
+        "qrCodeId": { "type": "string" },
+        "qrVerified": { "type": "boolean" },
+        "punchInTimeMillis": { "type": "integer" },
+        "punchOutTimeMillis": { "type": "integer" },
+        "expectedOutTimeMillis": { "type": "integer" },
+        "totalWorkplaceMinutes": { "type": "integer" },
+        "breakMinutesDeducted": { "type": "integer" },
+        "actualWorkingMinutes": { "type": "integer" },
+        "standardWorkingMinutes": { "type": "integer" },
+        "overtimeMinutes": { "type": "integer" },
+        "lateArrivalMinutes": { "type": "integer" },
+        "earlyDepartureMinutes": { "type": "integer" },
+        "dayEarnings": { "type": "number" },
+        "punchInSelfieUri": { "type": "string" },
+        "punchOutSelfieUri": { "type": "string" },
+        "correctionStatus": {
+          "type": "string",
+          "enum": ["NONE", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED", "RESOLVED"]
+        },
+        "auditNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateKey", "monthKey", "status", "createdAt", "updatedAt"]
+    },
+    "PayrollRecord": {
+      "title": "PayrollRecord",
+      "description": "Monthly salary history, verified deposits, and deduction records",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "monthKey": { "type": "string" },
+        "basicEarned": { "type": "number" },
+        "daEarned": { "type": "number" },
+        "hraEarned": { "type": "number" },
+        "otherAllowancesEarned": { "type": "number" },
+        "overtimeEarnings": { "type": "number" },
+        "nightAllowance": { "type": "number" },
+        "attendanceBonus": { "type": "number" },
+        "otherBonuses": { "type": "number" },
+        "grossEarned": { "type": "number" },
+        "employeePf": { "type": "number" },
+        "employerPf": { "type": "number" },
+        "epsContribution": { "type": "number" },
+        "edliContribution": { "type": "number" },
+        "employeeEsi": { "type": "number" },
+        "employerEsi": { "type": "number" },
+        "canteenDeduction": { "type": "number" },
+        "transportDeduction": { "type": "number" },
+        "teaLunchDeduction": { "type": "number" },
+        "advanceDeduction": { "type": "number" },
+        "otherDeductions": { "type": "number" },
+        "netEstimatedSalary": { "type": "number" },
+        "actualSalaryReceived": { "type": "number" },
+        "paymentDate": { "type": "string" },
+        "pfVerifiedStatus": { "type": "string", "enum": ["ESTIMATED", "VERIFIED_BY_STATEMENT"] },
+        "esiVerifiedStatus": { "type": "string", "enum": ["ESTIMATED", "VERIFIED_BY_STATEMENT"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "monthKey", "createdAt", "updatedAt"]
+    },
+    "FacilityItem": {
+      "title": "FacilityItem",
+      "description": "Company facility and deduction policy configured by employee",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "isFree": { "type": "boolean" },
+        "dailyCharge": { "type": "number" },
+        "monthlyCharge": { "type": "number" },
+        "actualDeduction": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "enabled", "isFree", "createdAt", "updatedAt"]
+    },
+    "AttendanceDispute": {
+      "title": "AttendanceDispute",
+      "description": "Attendance correction or salary/PF/ESI dispute ticket with audit trail",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "targetDate": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "gatePassNumber": { "type": "string" },
+        "evidenceUri": { "type": "string" },
+        "status": { "type": "string", "enum": ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED", "RESOLVED"] },
+        "auditTrail": { "type": "array" },
+        "reviewerNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "targetDate", "category", "description", "status", "createdAt", "updatedAt"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "User duty, overtime, salary, PF/ESI, and job application alerts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "isRead", "createdAt"]
+    },
+    "WorkplaceQr": {
+      "title": "WorkplaceQr",
+      "description": "Registered workplace with unique expiring QR code token",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "factoryName": { "type": "string" },
+        "industrialArea": { "type": "string" },
+        "address": { "type": "string" },
+        "qrToken": { "type": "string" },
+        "qrExpiresAtMillis": { "type": "integer" },
+        "isActive": { "type": "boolean" },
+        "verifiedByAdmin": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "companyName", "factoryName", "qrToken", "qrExpiresAtMillis", "isActive", "verifiedByAdmin", "createdAt", "updatedAt"]
+    },
+    "CompanyProfile": {
+      "title": "CompanyProfile",
+      "description": "Registered factory/company in HR portal awaiting or granted verification",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "factoryName": { "type": "string" },
+        "industrialArea": { "type": "string" },
+        "address": { "type": "string" },
+        "hrName": { "type": "string" },
+        "hrPhone": { "type": "string" },
+        "gstOrRegNumber": { "type": "string" },
+        "verificationDocNote": { "type": "string" },
+        "verificationStatus": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "facilitiesOffered": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "companyName", "factoryName", "industrialArea", "verificationStatus", "createdAt", "updatedAt"]
+    },
+    "JobVacancy": {
+      "title": "JobVacancy",
+      "description": "Secondary job vacancy posted by registered companies",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "title": { "type": "string" },
+        "tradeCategory": { "type": "string" },
+        "industrialArea": { "type": "string" },
+        "salaryMin": { "type": "number" },
+        "salaryMax": { "type": "number" },
+        "workingHours": { "type": "number" },
+        "shiftType": { "type": "string" },
+        "pfProvided": { "type": "boolean" },
+        "esiProvided": { "type": "boolean" },
+        "facilities": { "type": "array" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED"] },
+        "reportedCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "companyId", "companyName", "title", "tradeCategory", "industrialArea", "status", "createdAt", "updatedAt"]
+    },
+    "JobApplication": {
+      "title": "JobApplication",
+      "description": "Worker job application linking applicant and job owner",
+      "type": "object",
+      "properties": {
+        "applicantId": { "type": "string" },
+        "applicantName": { "type": "string" },
+        "applicantEmployeeId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobOwnerId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "tradeCategory": { "type": "string" },
+        "status": { "type": "string", "enum": ["APPLIED", "SHORTLISTED", "REJECTED", "HIRED"] },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["applicantId", "jobId", "jobOwnerId", "companyName", "jobTitle", "status", "createdAt", "updatedAt"]
+    },
+    "ComplaintReport": {
+      "title": "ComplaintReport",
+      "description": "Worker labour complaint or job/company abuse report reviewed by admins",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["JOB", "COMPANY", "LABOUR_ISSUE"] },
+        "targetId": { "type": "string" },
+        "subject": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "targetType", "subject", "details", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminAccount" },
+      "description": "Server-managed administrator allowlist"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated employee profile, salary structure, and government IDs"
+    },
+    "/users/{userId}/attendance/{dateKey}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Daily QR and selfie verified attendance records"
+    },
+    "/users/{userId}/payroll_records/{monthKey}": {
+      "schema": { "$ref": "#/entities/PayrollRecord" },
+      "description": "Monthly payroll history and verified deposit logs"
+    },
+    "/users/{userId}/facilities/{facilityId}": {
+      "schema": { "$ref": "#/entities/FacilityItem" },
+      "description": "Employee-configured company facilities and deductions"
+    },
+    "/users/{userId}/disputes/{disputeId}": {
+      "schema": { "$ref": "#/entities/AttendanceDispute" },
+      "description": "Attendance correction and salary/PF/ESI dispute tickets"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "Duty and payroll notification history"
+    },
+    "/workplaces/{workplaceId}": {
+      "schema": { "$ref": "#/entities/WorkplaceQr" },
+      "description": "Registered workplaces and expiring QR verification tokens"
+    },
+    "/companies/{companyId}": {
+      "schema": { "$ref": "#/entities/CompanyProfile" },
+      "description": "Company/Factory HR Portal registrations"
+    },
+    "/jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/JobVacancy" },
+      "description": "Secondary job vacancies posted by registered companies"
+    },
+    "/job_applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/JobApplication" },
+      "description": "Worker applications to company job vacancies"
+    },
+    "/complaints_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/ComplaintReport" },
+      "description": "Worker labour complaints and job/company reports"
+    }
+  }
+}

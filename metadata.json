@@ -1,0 +1,6 @@
+{
+  "name": "MY DUTY IN NCR",
+  "description": "Employee duty register, QR & selfie attendance, automatic overtime & salary calculator, PF/ESI tracker, and workplace services for NCR workers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

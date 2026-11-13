@@ -1,0 +1,451 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        ('email' in request.auth.token &&
+         request.auth.token.email == 'ramansavita4@gmail.com' &&
+         'email_verified' in request.auth.token &&
+         request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwnerOrAdmin(userId) {
+      return isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    function isValidUserProfile(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.role in ['worker', 'company_hr', 'admin'] &&
+             d.employeeId is string && d.employeeId.size() >= 3 && d.employeeId.size() <= 40 &&
+             d.fullName is string && d.fullName.size() >= 1 && d.fullName.size() <= 120 &&
+             d.keys().size() <= 60 &&
+             (!('calculationMethod' in d) || d.calculationMethod in ['MONTHLY_FIXED', 'DAILY_WAGE', 'HOURLY_WAGE', 'DAYS_26', 'DAYS_30', 'ACTUAL_PAYABLE']) &&
+             (!('monthlyGrossSalary' in d) || (d.monthlyGrossSalary is number && d.monthlyGrossSalary >= 0 && d.monthlyGrossSalary <= 10000000)) &&
+             (!('standardWorkingHours' in d) || (d.standardWorkingHours is number && d.standardWorkingHours >= 1.0 && d.standardWorkingHours <= 24.0));
+    }
+
+    function isValidAttendance(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.dateKey is string && d.dateKey.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             d.monthKey is string && d.monthKey.matches('^\\d{4}-\\d{2}$') &&
+             d.status in ['P', 'A', 'HD', 'WO', 'PL', 'H', 'M'] &&
+             d.keys().size() <= 30 &&
+             (!('overtimeMinutes' in d) || (d.overtimeMinutes is int && d.overtimeMinutes >= 0 && d.overtimeMinutes <= 1440)) &&
+             (!('actualWorkingMinutes' in d) || (d.actualWorkingMinutes is int && d.actualWorkingMinutes >= 0 && d.actualWorkingMinutes <= 1440)) &&
+             (!('correctionStatus' in d) || d.correctionStatus in ['NONE', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'RESOLVED']);
+    }
+
+    function isValidPayrollRecord(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.monthKey is string && d.monthKey.matches('^\\d{4}-\\d{2}$') &&
+             d.keys().size() <= 35 &&
+             (!('grossEarned' in d) || (d.grossEarned is number && d.grossEarned >= 0 && d.grossEarned <= 20000000)) &&
+             (!('actualSalaryReceived' in d) || (d.actualSalaryReceived is number && d.actualSalaryReceived >= 0 && d.actualSalaryReceived <= 20000000)) &&
+             (!('pfVerifiedStatus' in d) || d.pfVerifiedStatus in ['ESTIMATED', 'VERIFIED_BY_STATEMENT']) &&
+             (!('esiVerifiedStatus' in d) || d.esiVerifiedStatus in ['ESTIMATED', 'VERIFIED_BY_STATEMENT']);
+    }
+
+    function isValidFacility(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.name is string && d.name.size() >= 1 && d.name.size() <= 80 &&
+             d.category is string && d.category.size() >= 1 && d.category.size() <= 40 &&
+             d.enabled is bool && d.isFree is bool &&
+             d.keys().size() <= 15 &&
+             (!('monthlyCharge' in d) || (d.monthlyCharge is number && d.monthlyCharge >= 0 && d.monthlyCharge <= 1000000));
+    }
+
+    function isValidDispute(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.targetDate is string && d.targetDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             d.category is string && d.category.size() >= 1 && d.category.size() <= 60 &&
+             d.description is string && d.description.size() >= 3 && d.description.size() <= 1000 &&
+             d.status in ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'RESOLVED'] &&
+             d.keys().size() <= 15;
+    }
+
+    function isValidNotification(d) {
+      return d.userId is string && d.userId.size() >= 1 && d.userId.size() <= 128 &&
+             d.title is string && d.title.size() >= 1 && d.title.size() <= 150 &&
+             d.message is string && d.message.size() >= 1 && d.message.size() <= 500 &&
+             d.type is string && d.type.size() >= 1 && d.type.size() <= 40 &&
+             d.isRead is bool &&
+             d.keys().size() <= 10;
+    }
+
+    function isValidWorkplace(d) {
+      return d.ownerId is string && d.ownerId.size() >= 1 && d.ownerId.size() <= 128 &&
+             d.companyName is string && d.companyName.size() >= 1 && d.companyName.size() <= 150 &&
+             d.factoryName is string && d.factoryName.size() >= 1 && d.factoryName.size() <= 150 &&
+             d.qrToken is string && d.qrToken.size() >= 8 && d.qrToken.size() <= 200 &&
+             d.qrExpiresAtMillis is int && d.qrExpiresAtMillis >= 0 &&
+             d.isActive is bool && d.verifiedByAdmin is bool &&
+             d.keys().size() <= 15;
+    }
+
+    function isValidCompany(d) {
+      return d.ownerId is string && d.ownerId.size() >= 1 && d.ownerId.size() <= 128 &&
+             d.companyName is string && d.companyName.size() >= 1 && d.companyName.size() <= 150 &&
+             d.factoryName is string && d.factoryName.size() >= 1 && d.factoryName.size() <= 150 &&
+             d.industrialArea is string && d.industrialArea.size() >= 1 && d.industrialArea.size() <= 100 &&
+             d.verificationStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             d.keys().size() <= 16;
+    }
+
+    function isValidJob(d) {
+      return d.ownerId is string && d.ownerId.size() >= 1 && d.ownerId.size() <= 128 &&
+             d.companyId is string && d.companyId.size() <= 128 &&
+             d.companyName is string && d.companyName.size() >= 1 && d.companyName.size() <= 150 &&
+             d.title is string && d.title.size() >= 2 && d.title.size() <= 120 &&
+             d.tradeCategory is string && d.tradeCategory.size() >= 1 && d.tradeCategory.size() <= 60 &&
+             d.industrialArea is string && d.industrialArea.size() >= 1 && d.industrialArea.size() <= 100 &&
+             d.status in ['OPEN', 'CLOSED'] &&
+             d.keys().size() <= 20;
+    }
+
+    function isValidJobApplication(d) {
+      return d.applicantId is string && d.applicantId.size() >= 1 && d.applicantId.size() <= 128 &&
+             d.jobId is string && d.jobId.size() >= 1 && d.jobId.size() <= 128 &&
+             d.jobOwnerId is string && d.jobOwnerId.size() >= 1 && d.jobOwnerId.size() <= 128 &&
+             d.companyName is string && d.companyName.size() >= 1 && d.companyName.size() <= 150 &&
+             d.jobTitle is string && d.jobTitle.size() >= 1 && d.jobTitle.size() <= 120 &&
+             d.status in ['APPLIED', 'SHORTLISTED', 'REJECTED', 'HIRED'] &&
+             d.keys().size() <= 16;
+    }
+
+    function isValidComplaintReport(d) {
+      return d.reporterId is string && d.reporterId.size() >= 1 && d.reporterId.size() <= 128 &&
+             d.targetType in ['JOB', 'COMPANY', 'LABOUR_ISSUE'] &&
+             d.subject is string && d.subject.size() >= 2 && d.subject.size() <= 150 &&
+             d.details is string && d.details.size() >= 3 && d.details.size() <= 1500 &&
+             d.status in ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED'] &&
+             d.keys().size() <= 12;
+    }
+
+    // 1. Admins (server-provisioned only)
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // 2. Employee private profile & subcollections
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwnerOrAdmin(userId);
+      allow list: if isAdmin();
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.role == 'worker' &&
+                       request.resource.data.keys().hasAll(['userId', 'role', 'employeeId', 'fullName', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidUserProfile(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(request.resource.data) &&
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       (
+                         (request.auth.uid == userId &&
+                          request.resource.data.role == resource.data.role &&
+                          (!('accountSuspended' in request.resource.data) || request.resource.data.accountSuspended == resource.data.get('accountSuspended', false))) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isValidId(userId) && isOwnerOrAdmin(userId);
+
+      match /attendance/{dateKey} {
+        allow get: if isValidId(dateKey) && isOwnerOrAdmin(userId);
+        allow list: if isOwnerOrAdmin(userId);
+
+        allow create: if isValidId(dateKey) &&
+                         isOwnerOrAdmin(userId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.dateKey == dateKey &&
+                         request.resource.data.keys().hasAll(['userId', 'dateKey', 'monthKey', 'status', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                         isValidAttendance(request.resource.data);
+
+        allow update: if isValidId(dateKey) &&
+                         isOwnerOrAdmin(userId) &&
+                         isValidAttendance(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.dateKey == resource.data.dateKey &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time;
+
+        allow delete: if isValidId(dateKey) && isOwnerOrAdmin(userId);
+      }
+
+      match /payroll_records/{monthKey} {
+        allow get: if isValidId(monthKey) && isOwnerOrAdmin(userId);
+        allow list: if isOwnerOrAdmin(userId);
+
+        allow create: if isValidId(monthKey) &&
+                         isOwnerOrAdmin(userId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.monthKey == monthKey &&
+                         request.resource.data.keys().hasAll(['userId', 'monthKey', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                         isValidPayrollRecord(request.resource.data);
+
+        allow update: if isValidId(monthKey) &&
+                         isOwnerOrAdmin(userId) &&
+                         isValidPayrollRecord(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.monthKey == resource.data.monthKey &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time;
+
+        allow delete: if isValidId(monthKey) && isOwnerOrAdmin(userId);
+      }
+
+      match /facilities/{facilityId} {
+        allow get: if isValidId(facilityId) && isOwnerOrAdmin(userId);
+        allow list: if isOwnerOrAdmin(userId);
+
+        allow create: if isValidId(facilityId) &&
+                         isOwnerOrAdmin(userId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.keys().hasAll(['userId', 'name', 'category', 'enabled', 'isFree', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                         isValidFacility(request.resource.data);
+
+        allow update: if isValidId(facilityId) &&
+                         isOwnerOrAdmin(userId) &&
+                         isValidFacility(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time;
+
+        allow delete: if isValidId(facilityId) && isOwnerOrAdmin(userId);
+      }
+
+      match /disputes/{disputeId} {
+        allow get: if isValidId(disputeId) && isOwnerOrAdmin(userId);
+        allow list: if isOwnerOrAdmin(userId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(disputeId) &&
+                         request.auth.uid == userId &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.status == 'SUBMITTED' &&
+                         request.resource.data.keys().hasAll(['userId', 'targetDate', 'category', 'description', 'status', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                         isValidDispute(request.resource.data);
+
+        allow update: if isSignedIn() &&
+                         isValidId(disputeId) &&
+                         isValidDispute(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                         (
+                           (request.auth.uid == userId &&
+                            resource.data.status in ['SUBMITTED', 'UNDER_REVIEW'] &&
+                            request.resource.data.status == resource.data.status &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'gatePassNumber', 'evidenceUri', 'auditTrail', 'updatedAt'])) ||
+                           isAdmin()
+                         );
+
+        allow delete: if isValidId(disputeId) && isOwnerOrAdmin(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isValidId(notificationId) && isOwnerOrAdmin(userId);
+        allow list: if isOwnerOrAdmin(userId);
+
+        allow create: if isValidId(notificationId) &&
+                         isOwnerOrAdmin(userId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type', 'isRead', 'createdAt']) &&
+                         request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                         isValidNotification(request.resource.data);
+
+        allow update: if isValidId(notificationId) &&
+                         isOwnerOrAdmin(userId) &&
+                         isValidNotification(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+
+        allow delete: if isValidId(notificationId) && isOwnerOrAdmin(userId);
+      }
+    }
+
+    // 3. Workplaces (QR Verification Registry)
+    match /workplaces/{workplaceId} {
+      allow get: if isSignedIn() && isValidId(workplaceId);
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.isActive == true || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(workplaceId) &&
+                       request.resource.data.ownerId == request.auth.uid &&
+                       request.resource.data.verifiedByAdmin == false &&
+                       request.resource.data.keys().hasAll(['ownerId', 'companyName', 'factoryName', 'qrToken', 'qrExpiresAtMillis', 'isActive', 'verifiedByAdmin', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidWorkplace(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(workplaceId) &&
+                       isValidWorkplace(request.resource.data) &&
+                       request.resource.data.ownerId == resource.data.ownerId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       (
+                         (resource.data.ownerId == request.auth.uid &&
+                          request.resource.data.verifiedByAdmin == resource.data.verifiedByAdmin &&
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyName', 'factoryName', 'industrialArea', 'address', 'qrToken', 'qrExpiresAtMillis', 'isActive', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isSignedIn() && isValidId(workplaceId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 4. Company / Factory HR Portal
+    match /companies/{companyId} {
+      allow get: if isSignedIn() && isValidId(companyId) && (resource.data.ownerId == request.auth.uid || resource.data.verificationStatus == 'APPROVED' || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.verificationStatus == 'APPROVED' || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(companyId) &&
+                       request.resource.data.ownerId == request.auth.uid &&
+                       request.resource.data.verificationStatus == 'PENDING' &&
+                       request.resource.data.keys().hasAll(['ownerId', 'companyName', 'factoryName', 'industrialArea', 'verificationStatus', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidCompany(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(companyId) &&
+                       isValidCompany(request.resource.data) &&
+                       request.resource.data.ownerId == resource.data.ownerId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       (
+                         (resource.data.ownerId == request.auth.uid &&
+                          request.resource.data.verificationStatus == resource.data.verificationStatus &&
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyName', 'factoryName', 'industrialArea', 'address', 'hrName', 'hrPhone', 'gstOrRegNumber', 'verificationDocNote', 'facilitiesOffered', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isSignedIn() && isValidId(companyId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 5. Secondary Job Vacancies
+    match /jobs/{jobId} {
+      allow get: if isSignedIn() && isValidId(jobId) && (resource.data.ownerId == request.auth.uid || resource.data.status == 'OPEN' || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.status == 'OPEN' || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(jobId) &&
+                       request.resource.data.ownerId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/companies/$(request.resource.data.companyId)) &&
+                       get(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.ownerId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['ownerId', 'companyId', 'companyName', 'title', 'tradeCategory', 'industrialArea', 'status', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidJob(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(jobId) &&
+                       isValidJob(request.resource.data) &&
+                       request.resource.data.ownerId == resource.data.ownerId &&
+                       request.resource.data.companyId == resource.data.companyId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       (
+                         (resource.data.ownerId == request.auth.uid &&
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyName', 'title', 'tradeCategory', 'industrialArea', 'salaryMin', 'salaryMax', 'workingHours', 'shiftType', 'pfProvided', 'esiProvided', 'facilities', 'status', 'updatedAt'])) ||
+                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportedCount', 'updatedAt']) &&
+                          request.resource.data.reportedCount == resource.data.get('reportedCount', 0) + 1) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isSignedIn() && isValidId(jobId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 6. Job Applications
+    match /job_applications/{applicationId} {
+      allow get: if isSignedIn() && isValidId(applicationId) && (resource.data.applicantId == request.auth.uid || resource.data.jobOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.applicantId == request.auth.uid || resource.data.jobOwnerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(applicationId) &&
+                       request.resource.data.applicantId == request.auth.uid &&
+                       request.resource.data.status == 'APPLIED' &&
+                       exists(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)) &&
+                       request.resource.data.keys().hasAll(['applicantId', 'jobId', 'jobOwnerId', 'companyName', 'jobTitle', 'status', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidJobApplication(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(applicationId) &&
+                       isValidJobApplication(request.resource.data) &&
+                       request.resource.data.applicantId == resource.data.applicantId &&
+                       request.resource.data.jobId == resource.data.jobId &&
+                       request.resource.data.jobOwnerId == resource.data.jobOwnerId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       (
+                         (resource.data.jobOwnerId == request.auth.uid &&
+                          resource.data.status != 'HIRED' &&
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'note', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isSignedIn() && isValidId(applicationId) && (resource.data.applicantId == request.auth.uid || isAdmin());
+    }
+
+    // 7. Labour Complaints & Abuse Reports
+    match /complaints_reports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && (resource.data.reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       request.resource.data.reporterId == request.auth.uid &&
+                       request.resource.data.status == 'OPEN' &&
+                       request.resource.data.keys().hasAll(['reporterId', 'targetType', 'subject', 'details', 'status', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.createdAt is timestamp && request.resource.data.createdAt <= request.time &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time &&
+                       isValidComplaintReport(request.resource.data);
+
+      allow update: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       isAdmin() &&
+                       isValidComplaintReport(request.resource.data) &&
+                       request.resource.data.reporterId == resource.data.reporterId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time;
+
+      allow delete: if isSignedIn() && isValidId(reportId) && (resource.data.reporterId == request.auth.uid || isAdmin());
+    }
+  }
+}
